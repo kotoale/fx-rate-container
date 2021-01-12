@@ -37,8 +37,8 @@ class FxRateContainerImplTest {
     @MethodSource("provideDifferentValuesForTestGet")
     void get_should_return_expected_value(String ccyPair, long timestamp, double expected) {
         fxRateContainer.add("EURRUB", 90.110, 1579598310);
-        fxRateContainer.add("EURRUB", 90.120, 1579598320);
         fxRateContainer.add("EURRUB", 90.130, 1579598330);
+        fxRateContainer.add("EURRUB", 90.120, 1579598320);
         fxRateContainer.add("EURRUB", 90.140, 1579598340);
 
         assertThat(fxRateContainer.get(ccyPair, timestamp)).isEqualTo(expected);
@@ -78,8 +78,8 @@ class FxRateContainerImplTest {
     @MethodSource("provideDifferentValuesForTestAverage")
     void average_should_return_expected_value(String ccyPair, long start, long end, double average) {
         fxRateContainer.add("EURRUB", 90.110, 1579598310);
-        fxRateContainer.add("EURRUB", 90.120, 1579598320);
         fxRateContainer.add("EURRUB", 90.130, 1579598330);
+        fxRateContainer.add("EURRUB", 90.120, 1579598320);
         fxRateContainer.add("EURRUB", 90.140, 1579598340);
 
         assertThat(fxRateContainer.average(ccyPair, start, end)).isEqualTo(average);
