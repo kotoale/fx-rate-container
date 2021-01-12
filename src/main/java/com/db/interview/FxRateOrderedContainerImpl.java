@@ -1,7 +1,5 @@
 package com.db.interview;
 
-import org.apache.commons.lang3.tuple.ImmutablePair;
-
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -16,24 +14,25 @@ import java.util.Objects;
  * Time Complexity (worse case):
  * add - O(1)
  * get - O(logN)
- * average - O(N)
+ * average - O(logN)
  */
 public class FxRateOrderedContainerImpl implements FxRateContainer {
 
-    private final Map<String, List<ImmutablePair<Long, Double>>> fxRates = new HashMap<>();
-    private final Comparator<ImmutablePair<Long, Double>> ratesComparator = Comparator.comparing(ImmutablePair::getLeft);
+    private final Map<String, List<RateValueHolder>> fxRates = new HashMap<>();
+    private final Comparator<RateValueHolder> ratesComparator = Comparator.comparing(RateValueHolder::getTimestamp);
 
     @Override
     public void add(String ccyPair, double fxRate, long timestamp) {
         Objects.requireNonNull(ccyPair, "ccyPair");
 
         final var rates = fxRates.computeIfAbsent(ccyPair, (key) -> new ArrayList<>());
-        if (!rates.isEmpty() && timestamp <= rates.get(rates.size() - 1).getLeft()) {
+        if (!rates.isEmpty() && timestamp <= rates.get(rates.size() - 1).getTimestamp()) {
             throw new IllegalArgumentException(String.format("timestamp is less than or equal to last stored timestamp, [timestamp, stored]: [%d, %d]",
-                    timestamp, rates.get(rates.size() - 1).getLeft()));
+                    timestamp, rates.get(rates.size() - 1).getTimestamp()));
         }
 
-        rates.add(new ImmutablePair<>(timestamp, fxRate));
+        double prevSum = rates.isEmpty() ? 0.0 : rates.get(rates.size() - 1).getCurrentSum();
+        rates.add(new RateValueHolder(timestamp, fxRate, prevSum + fxRate));
     }
 
     @Override
@@ -45,7 +44,7 @@ public class FxRateOrderedContainerImpl implements FxRateContainer {
             return Double.NaN;
         }
 
-        int index = Collections.binarySearch(rates, new ImmutablePair<>(timestamp, 0.0), ratesComparator);
+        int index = Collections.binarySearch(rates, new RateValueHolder(timestamp, 0.0, 0.0), ratesComparator);
         // all stored timestamps are greater than specified one
         if (index == -1) {
             return Double.NaN;
@@ -58,7 +57,7 @@ public class FxRateOrderedContainerImpl implements FxRateContainer {
             index = Math.abs(index) - 2;
         }
 
-        return rates.get(index).getRight();
+        return rates.get(index).getRate();
     }
 
     @Override
@@ -70,19 +69,19 @@ public class FxRateOrderedContainerImpl implements FxRateContainer {
         }
 
         final var rates = fxRates.get(ccyPair);
-        if (rates == null) {
+        if (rates == null || end < rates.get(0).getTimestamp() || start > rates.get(rates.size() - 1).getTimestamp()) {
             return Double.NaN;
         }
 
-        int startIndex = Collections.binarySearch(rates, new ImmutablePair<>(start, 0.0), ratesComparator);
-        // in case when specified timestamp (start) is not found in the list (startIndex < 0)
+        int fromIndex = Collections.binarySearch(rates, new RateValueHolder(start, 0.0, 0.0), ratesComparator);
+        // in case when specified timestamp (start) is not found in the list (fromIndex < 0)
         // the following logic gets minimum index of element with timestamp greater than specified;
-        // in case when startIndex >= 0 we already have index of element with timestamp equal to the specified one
-        if (startIndex < 0) {
-            startIndex = Math.abs(startIndex) - 1;
+        // in case when fromIndex >= 0 we already have index of element with timestamp equal to the specified one
+        if (fromIndex < 0) {
+            fromIndex = Math.abs(fromIndex) - 1;
         }
 
-        int toIndex = Collections.binarySearch(rates, new ImmutablePair<>(end, 0.0), ratesComparator);
+        int toIndex = Collections.binarySearch(rates, new RateValueHolder(end, 0.0, 0.0), ratesComparator);
         // in case when specified timestamp (end) is not found in the list (toIndex < 0)
         // the following logic gets maximum index of element with timestamp less than specified;
         // in case when toIndex >= 0 we already have index of element with timestamp equal to the specified one
@@ -90,10 +89,45 @@ public class FxRateOrderedContainerImpl implements FxRateContainer {
             toIndex = Math.abs(toIndex) - 2;
         }
 
-        return rates.subList(startIndex, ++toIndex)
-                .stream()
-                .mapToDouble(ImmutablePair::getRight)
-                .average()
-                .orElse(Double.NaN);
+        if (fromIndex == toIndex) {
+            return rates.get(toIndex).getRate();
+        }
+
+        if (fromIndex > toIndex) {
+            return Double.NaN;
+        }
+
+        final var toHolder = rates.get(toIndex);
+        if (fromIndex == 0) {
+            return toHolder.getCurrentSum() / (toIndex + 1);
+        }
+
+        fromIndex--;
+        final var fromHolder = rates.get(fromIndex);
+        return (toHolder.getCurrentSum() - fromHolder.getCurrentSum()) / (toIndex - fromIndex);
+    }
+
+    static class RateValueHolder {
+        private final long timestamp;
+        private final double rate;
+        private final double currentSum;
+
+        public RateValueHolder(long timestamp, double rate, double currentSum) {
+            this.timestamp = timestamp;
+            this.rate = rate;
+            this.currentSum = currentSum;
+        }
+
+        public long getTimestamp() {
+            return timestamp;
+        }
+
+        public double getRate() {
+            return rate;
+        }
+
+        public double getCurrentSum() {
+            return currentSum;
+        }
     }
 }

@@ -12,18 +12,20 @@ import java.util.TreeMap;
  * Time Complexity (worse case):
  * add - O(logN)
  * get - O(logN)
- * average - O(N)
+ * average - O(logN)
  */
 public class FxRateContainerImpl implements FxRateContainer {
 
-    private final Map<String, NavigableMap<Long, Double>> fxRates = new HashMap<>();
+    private final Map<String, NavigableMap<Long, RateValueHolder>> fxRates = new HashMap<>();
 
     @Override
     public void add(String ccyPair, double fxRate, long timestamp) {
         Objects.requireNonNull(ccyPair, "ccyPair");
 
         final var rateByTime = fxRates.computeIfAbsent(ccyPair, (key) -> new TreeMap<>());
-        rateByTime.put(timestamp, fxRate);
+
+        double prevSum = rateByTime.isEmpty() ? 0.0 : rateByTime.lastEntry().getValue().getCurrentSum();
+        rateByTime.put(timestamp, new RateValueHolder(fxRate, rateByTime.size() + 1, prevSum + fxRate));
     }
 
     @Override
@@ -35,7 +37,7 @@ public class FxRateContainerImpl implements FxRateContainer {
             return Double.NaN;
         }
         final var floorEntry = rateByTime.floorEntry(timestamp);
-        return floorEntry == null ? Double.NaN : floorEntry.getValue();
+        return floorEntry == null ? Double.NaN : floorEntry.getValue().getRate();
     }
 
     @Override
@@ -47,13 +49,50 @@ public class FxRateContainerImpl implements FxRateContainer {
         }
 
         final var rateByTime = fxRates.get(ccyPair);
-        return rateByTime == null
-                ? Double.NaN
-                : rateByTime.subMap(start, true, end, true)
-                .values()
-                .stream()
-                .mapToDouble(e -> e)
-                .average()
-                .orElse(Double.NaN);
+        if (rateByTime == null || end < rateByTime.firstKey() || start > rateByTime.lastKey()) {
+            return Double.NaN;
+        }
+
+        final var subMap = rateByTime.subMap(start, true, end, true);
+        if (subMap.isEmpty()) {
+            return Double.NaN;
+        }
+
+        if (subMap.size() == 1) {
+            return subMap.firstEntry().getValue().getRate();
+        }
+
+        final var toHolder = subMap.lastEntry().getValue();
+
+        if (subMap.firstEntry().getValue().getCurrentSize() == 1) {
+            return toHolder.getCurrentSum() / toHolder.getCurrentSize();
+        }
+
+        RateValueHolder fromHolder = rateByTime.lowerEntry(subMap.firstKey()).getValue();
+        return (toHolder.getCurrentSum() - fromHolder.getCurrentSum()) / (toHolder.getCurrentSize() - fromHolder.getCurrentSize());
+    }
+
+    static class RateValueHolder {
+        private final double rate;
+        private final long currentSize;
+        private final double currentSum;
+
+        public RateValueHolder(double rate, long currentSize, double currentSum) {
+            this.rate = rate;
+            this.currentSize = currentSize;
+            this.currentSum = currentSum;
+        }
+
+        public double getRate() {
+            return rate;
+        }
+
+        public long getCurrentSize() {
+            return currentSize;
+        }
+
+        public double getCurrentSum() {
+            return currentSum;
+        }
     }
 }
