@@ -11,7 +11,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class FxRateOrderedContainerImplTest {
-    FxRateContainer fxRateContainer = new FxRateOrderedContainerImpl();
+
+    private final FxRateContainer fxRateContainer = new FxRateOrderedContainerImpl();
 
     @Test
     void add_should_throw_NullPointerException() {
@@ -19,9 +20,9 @@ class FxRateOrderedContainerImplTest {
     }
 
     @Test
-    void add_should_throw_IllegalStateException() {
+    void add_should_throw_IllegalArgumentException() {
         fxRateContainer.add("EURRUB", 90.1208, 1579598352);
-        assertThrows(IllegalStateException.class, () -> fxRateContainer.add("EURRUB", 90.1207, 1579598352 - 1));
+        assertThrows(IllegalArgumentException.class, () -> fxRateContainer.add("EURRUB", 90.1207, 1579598352 - 1));
     }
 
     @Test

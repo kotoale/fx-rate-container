@@ -11,7 +11,12 @@ import java.util.Map;
 import java.util.Objects;
 
 /**
- * This implementation assumes correct order of adding Fx Rates
+ * This implementation assumes correct order of adding Fx Rates.
+ * <p>
+ * Time Complexity (worse case):
+ * add - O(1)
+ * get - O(logN)
+ * average - O(N)
  */
 public class FxRateOrderedContainerImpl implements FxRateContainer {
 
@@ -24,7 +29,7 @@ public class FxRateOrderedContainerImpl implements FxRateContainer {
 
         final var rates = fxRates.computeIfAbsent(ccyPair, (key) -> new ArrayList<>());
         if (!rates.isEmpty() && timestamp <= rates.get(rates.size() - 1).getLeft()) {
-            throw new IllegalStateException(String.format("timestamp is less than or equal to last stored timestamp, [timestamp, stored]: [%d, %d]",
+            throw new IllegalArgumentException(String.format("timestamp is less than or equal to last stored timestamp, [timestamp, stored]: [%d, %d]",
                     timestamp, rates.get(rates.size() - 1).getLeft()));
         }
 
@@ -41,10 +46,14 @@ public class FxRateOrderedContainerImpl implements FxRateContainer {
         }
 
         int index = Collections.binarySearch(rates, new ImmutablePair<>(timestamp, 0.0), ratesComparator);
+        // all stored timestamps are greater than specified one
         if (index == -1) {
             return Double.NaN;
         }
 
+        // in case when specified timestamp is not found in the list (index < 0)
+        // the following logic gets maximum index of element with timestamp less than specified;
+        // in case when index >= 0 we already have index of element with timestamp equal to the specified one
         if (index < 0) {
             index = Math.abs(index) - 2;
         }
@@ -66,17 +75,22 @@ public class FxRateOrderedContainerImpl implements FxRateContainer {
         }
 
         int startIndex = Collections.binarySearch(rates, new ImmutablePair<>(start, 0.0), ratesComparator);
+        // in case when specified timestamp (start) is not found in the list (startIndex < 0)
+        // the following logic gets minimum index of element with timestamp greater than specified;
+        // in case when startIndex >= 0 we already have index of element with timestamp equal to the specified one
         if (startIndex < 0) {
             startIndex = Math.abs(startIndex) - 1;
         }
 
         int toIndex = Collections.binarySearch(rates, new ImmutablePair<>(end, 0.0), ratesComparator);
+        // in case when specified timestamp (end) is not found in the list (toIndex < 0)
+        // the following logic gets maximum index of element with timestamp less than specified;
+        // in case when toIndex >= 0 we already have index of element with timestamp equal to the specified one
         if (toIndex < 0) {
             toIndex = Math.abs(toIndex) - 2;
         }
-        toIndex++;
 
-        return rates.subList(startIndex, toIndex)
+        return rates.subList(startIndex, ++toIndex)
                 .stream()
                 .mapToDouble(ImmutablePair::getRight)
                 .average()

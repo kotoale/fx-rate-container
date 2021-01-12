@@ -5,7 +5,7 @@ public interface FxRateContainer {
      * Adds Fx Rate for specified {@code ccyPair} and {@code timestamp} to the container;
      *
      * @throws NullPointerException  if {@code ccyPair} is null;
-     * @throws IllegalStateException in case of particular container implementation assumes the correct order
+     * @throws IllegalArgumentException in case of particular container implementation assumes the correct order
      *                               of adding Fx Rates (for the same {@code ccyPair} {@code timestamp} values should be
      *                               added in increasing order), but the order is broken
      */

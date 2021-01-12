@@ -8,6 +8,11 @@ import java.util.TreeMap;
 
 /**
  * This implementation supports any order of adding Fx Rates
+ * <p>
+ * Time Complexity (worse case):
+ * add - O(logN)
+ * get - O(logN)
+ * average - O(N)
  */
 public class FxRateContainerImpl implements FxRateContainer {
 

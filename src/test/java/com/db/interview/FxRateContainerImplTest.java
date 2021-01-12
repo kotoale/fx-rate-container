@@ -12,7 +12,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class FxRateContainerImplTest {
 
-    FxRateContainer fxRateContainer = new FxRateContainerImpl();
+    private final FxRateContainer fxRateContainer = new FxRateContainerImpl();
 
     @Test
     void add_should_throw_NullPointerException() {
