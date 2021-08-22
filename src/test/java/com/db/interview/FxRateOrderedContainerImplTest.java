@@ -1,5 +1,6 @@
 package com.db.interview;
 
+import org.assertj.core.data.Offset;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -11,6 +12,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class FxRateOrderedContainerImplTest {
+
+    private static final Offset<Double> EPSILON = Offset.offset(0.000001d);
 
     private final FxRateContainer fxRateContainer = new FxRateOrderedContainerImpl();
 
@@ -31,7 +34,7 @@ class FxRateOrderedContainerImplTest {
         fxRateContainer.add("EURRUB", 90.1208, 1579598352);
         fxRateContainer.add("EURRUB", 90.1209, 1579598352 + 1);
 
-        assertThat(fxRateContainer.get("EURRUB", 1579598352)).isEqualTo(90.1208);
+        assertThat(fxRateContainer.get("EURRUB", 1579598352)).isEqualTo(90.1208, EPSILON);
     }
 
     @Test
@@ -47,7 +50,7 @@ class FxRateOrderedContainerImplTest {
         fxRateContainer.add("EURRUB", 90.130, 1579598330);
         fxRateContainer.add("EURRUB", 90.140, 1579598340);
 
-        assertThat(fxRateContainer.get(ccyPair, timestamp)).isEqualTo(expected);
+        assertThat(fxRateContainer.get(ccyPair, timestamp)).isEqualTo(expected, EPSILON);
     }
 
     private static Stream<Arguments> provideDifferentValuesForTestGet() {
@@ -88,7 +91,7 @@ class FxRateOrderedContainerImplTest {
         fxRateContainer.add("EURRUB", 90.130, 1579598330);
         fxRateContainer.add("EURRUB", 90.140, 1579598340);
 
-        assertThat(fxRateContainer.average(ccyPair, start, end)).isEqualTo(average);
+        assertThat(fxRateContainer.average(ccyPair, start, end)).isEqualTo(average, EPSILON);
     }
 
     private static Stream<Arguments> provideDifferentValuesForTestAverage() {
